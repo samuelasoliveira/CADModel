@@ -606,11 +606,6 @@
 
             <div class="header-section" draggable="true" data-section="formas">
                 <button class="btn" onclick="addBagPart('body')" data-tooltip="Corpo">🎒</button>
-                <button class="btn" onclick="addBagPart('flap')" data-tooltip="Aba">📋</button>
-                <button class="btn" onclick="addBagPart('handle')" data-tooltip="Alça">🪢</button>
-                <button class="btn" onclick="addBagPart('pocket')" data-tooltip="Bolso">📦</button>
-                <button class="btn" onclick="addBagPart('base')" data-tooltip="Base">📐</button>
-                <button class="btn" onclick="addBagPart('gusset')" data-tooltip="Fundo">🔲</button>
                 <button class="btn" onclick="addBagPart('halfmoon')" data-tooltip="Meia-Lua">🌓</button>
             </div>
 
@@ -964,7 +959,6 @@
                 } else if (type === 'halfmoon') {
                     const cx = width / 2, cy = height, rx = width / 2, ry = height, n = 32;
                     for (let i = 0; i <= n; i++) { const a = Math.PI + (i / n) * Math.PI; this.polygonPoints.push({ x: cx + Math.cos(a) * rx, y: cy + Math.sin(a) * ry }); }
-                    this.polygonPoints.push({ x: 0, y: height });
                 } else if (type === 'line') {
                     this.polygonPoints = [{ x: 0, y: 0 }, { x: width, y: height }];
                 }
@@ -1755,6 +1749,21 @@
             autoSaveTimer = setTimeout(saveProjectStateNow, 250);
         }
 
+        function sanitizePolygonPoints(pts) {
+            if (!Array.isArray(pts) || pts.length === 0) return [];
+            const out = [];
+            for (const p of pts) {
+                const last = out[out.length - 1];
+                if (last && Math.abs(last.x - p.x) < 0.01 && Math.abs(last.y - p.y) < 0.01) continue;
+                out.push({ x: p.x, y: p.y });
+            }
+            if (out.length > 2) {
+                const f = out[0], l = out[out.length - 1];
+                if (Math.abs(f.x - l.x) < 0.01 && Math.abs(f.y - l.y) < 0.01) out.pop();
+            }
+            return out;
+        }
+
         function loadProjectState() {
             const raw = localStorage.getItem(PROJECT_STORAGE_KEY);
             if (!raw) return false;
@@ -1767,7 +1776,7 @@
                     s.id = sd.id;
                     s.seamAllowance = sd.seamAllowance;
                     s.visible = sd.visible;
-                    s.polygonPoints = sd.polygonPoints || [];
+                    s.polygonPoints = sanitizePolygonPoints(sd.polygonPoints || []);
                     s.joinedSides = sd.joinedSides || { top: [], bottom: [], left: [], right: [] };
                     s.lineStyle = LINE_STYLES[sd.lineStyle] ? sd.lineStyle : 'solid';
                     s.positionEdited = !!sd.positionEdited;
@@ -2011,7 +2020,7 @@ function exportPattern() { if (!shapes.length) return; const ec = document.creat
                     shapes = data.shapes.map(sd => {
                         const s = new Shape(sd.type, sd.x, sd.y, sd.width, sd.height, sd.color, sd.name);
                         s.id = sd.id; s.seamAllowance = sd.seamAllowance; s.visible = sd.visible;
-                        s.polygonPoints = Array.isArray(sd.polygonPoints) ? sd.polygonPoints.map(p => ({ ...p })) : [];
+                        s.polygonPoints = sanitizePolygonPoints(Array.isArray(sd.polygonPoints) ? sd.polygonPoints.map(p => ({ ...p })) : []);
                         s.joinedSides = sd.joinedSides || { top: [], bottom: [], left: [], right: [] };
                         s.lineStyle = LINE_STYLES[sd.lineStyle] ? sd.lineStyle : 'solid';
                         s.positionEdited = !!sd.positionEdited;
